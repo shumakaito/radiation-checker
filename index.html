@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 16px; }
+        h2 { margin-bottom: 16px; }
+        .input-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+        input { padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; }
+        input[type="text"] { width: 140px; }
+        input[type="number"] { width: 100px; }
+        button { padding: 8px 16px; background: #185FA5; color: white;
+            border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0C447C; }
+        .btn-clear { background: #888; }
+        .result-card { margin-bottom: 10px; padding: 12px 16px;
+            border-radius: 8px; font-size: 14px; }
+        .正常  { background: #E1F5EE; color: #085041; }
+        .要観察 { background: #FAEEDA; color: #633806; }
+        .要確認 { background: #FCEBEB; color: #501313; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .del-btn { background: #888; padding: 4px 10px;
+            font-size: 12px; border-radius: 4px; }
+        .advice { margin-top: 8px; font-size: 13px; }
+        #count { font-size: 13px; color: #666; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+<h2>放射線量チェッカー</h2>
+
+<div class="input-row">
+    <input type="text" id="name-input" placeholder="患者名">
+    <input type="number" id="dose-input" placeholder="線量(mSv)">
+    <button onclick="addPatient()">追加</button>
+    <button class="btn-clear" onclick="clearAll()">全クリア</button>
+</div>
+
+<div id="count"></div>
+<div id="results"></div>
+
+<script>
+    // データの読み込み・保存
+    function loadPatients() {
+        const data = localStorage.getItem("patients");
+        return data ? JSON.parse(data) : [];
+    }
+
+    function savePatients(patients) {
+        localStorage.setItem("patients", JSON.stringify(patients));
+    }
+
+    // 判定ロジック
+    function getDoseStatus(dose) {
+        if (dose < 1) return "正常";
+        else if (dose < 20) return "要観察";
+        else return "要確認";
+    }
+
+    function getAdvice(dose) {
+        if (dose < 20) return "";
+        else if (dose < 50) return "📋 血液検査および専門医の診察受診をお願いします。";
+        else if (dose < 100) return "📋 専門医への相談を推奨します。";
+        else return "📋 即時に専門医へ相談してください。";
+    }
+
+    // 画面に一覧を表示
+    function renderList() {
+        const patients = loadPatients();
+        const results = document.getElementById("results");
+        const count = document.getElementById("count");
+
+        count.textContent = "登録患者数: " + patients.length + "人";
+        results.innerHTML = "";
+
+        patients.forEach(function(p, index) {
+            const status = getDoseStatus(p.dose);
+            const advice = getAdvice(p.dose);
+
+            const card = document.createElement("div");
+            card.className = "result-card " + status;
+            card.innerHTML =
+                '<div class="card-header">' +
+                '<strong>' + p.name + '</strong>: ' + p.dose + 'mSv — <strong>' + status + '</strong>' +
+                '<button class="del-btn" onclick="deletePatient(' + index + ')">削除</button>' +
+                '</div>' +
+                (advice ? '<div class="advice">' + advice + '</div>' : '');
+
+            results.appendChild(card);
+        });
+    }
+
+    // 患者を追加
+    function addPatient() {
+        const name = document.getElementById("name-input").value.trim();
+        const dose = parseFloat(document.getElementById("dose-input").value);
+
+        if (!name || isNaN(dose)) {
+            alert("患者名と線量を入力してください");
+            return;
+        }
+
+        const patients = loadPatients();
+        patients.push({ name: name, dose: dose });
+        savePatients(patients);
+
+        document.getElementById("name-input").value = "";
+        document.getElementById("dose-input").value = "";
+        document.getElementById("name-input").focus();
+
+        renderList();
+    }
+
+    // 個別削除
+    function deletePatient(index) {
+        const patients = loadPatients();
+        patients.splice(index, 1);
+        savePatients(patients);
+        renderList();
+    }
+
+    // 全クリア
+    function clearAll() {
+        if (confirm("全データを削除しますか？")) {
+            localStorage.removeItem("patients");
+            renderList();
+        }
+    }
+
+    // 起動時に一覧を表示
+    renderList();
+</script>
+</body>
+</html>
